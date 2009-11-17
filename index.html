@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+    <title>jsTunes</title>
+    
+    <link type="text/css" href="css/jstunes.css" rel="Stylesheet">
+    <link type="text/css" href="css/smoothness/jquery-ui-1.7.2.custom.css" rel="Stylesheet">
+</head>
+
+<body><div id="wrapper">
+    <h1>jsTunes</h1>
+    
+        <p id="status">Loading...</p>
+        <input type="file" id="file">
+        
+        <div id="player">
+            <!--<canvas id="vis" width="1000" height="100"></canvas>-->
+            <div id="position-slider" style="width:1000px; margin:15px;"></div>
+        
+            <p id="position">0:00</p>
+            <p id="length">0:00</p>
+        
+            <input type="button" value="play" id="playpause" disabled="disabled">
+        </div>
+
+	<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=10,0,0,0" width="1" height="1" id="jssound" align="middle">
+	<param name="allowScriptAccess" value="sameDomain" />
+	<param name="allowFullScreen" value="false" />
+	<param name="movie" value="jssound.swf?callback=readJSSoundBuffer" /><param name="quality" value="high" /><param name="bgcolor" value="#ffffff" />	<embed src="jssound.swf?callback=readJSSoundBuffer" quality="high" bgcolor="#ffffff" width="1" height="1" name="jssound" align="middle" allowScriptAccess="always" allowFullScreen="false" type="application/x-shockwave-flash" pluginspage="http://www.adobe.com/go/getflashplayer" />
+	</object>
+
+</div>
+
+<script src="js/jquery-1.3.2.min.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" src="js/jquery-ui-1.7.2.custom.min.js"></script>
+<script src="js/buffer.js" type="text/javascript" charset="utf-8"></script>
+<script src="js/file.js" type="text/javascript" charset="utf-8"></script>
+<script src="js/utils.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" charset="utf-8">
+    $(document).ready(function() {
+        $('#status').text('Loaded.');
+    });
+    
+    var file;
+    var sliding = false;
+    
+    $('#file').change(function() {
+        $('#status').text('Loading '+$(this).val()+' ...');
+        var fileStr = $(this).get(0).files[0].getAsBinary();
+        var fileArray = new Array(fileStr.length);
+        for (var i=0; i<fileStr.length; i++) {
+            fileArray[i] = fileStr.charCodeAt(i);
+        }
+        file = new File(new Buffer(fileArray));
+        $('#status').text('Loaded.');
+        $("#playpause").attr("disabled", null).attr("value", "play");
+        $('#length').text(formatTime(file.lengthSeconds));
+        var slider = $("#position-slider").slider({
+    		value: 0,
+    		orientation: "horizontal",
+    		animate: true,
+    		max: 1000
+    	}).bind('slidechange', function(event, ui) {
+    	    file.skipToSample(Math.floor(ui.value/1000 * file.lengthSamples));
+    	}).bind('slidestart', function(event, ui) {
+    	    sliding = true;
+    	}).bind('slidestop', function(event, ui){
+    	    sliding = false;
+    	}).bind('slide', function(event, ui){
+    	    $('#position').text(formatTime(ui.value/1000 * file.lengthSeconds));
+    	});
+    	$('#player').show();
+    	//setTimeout(function(){ generateVis(0); }, 0);
+    });
+    
+    
+    
+    $("#playpause").click(function() {
+        if ($(this).attr("value") == "play") {
+            file.playing = true;
+            $("#status").text("Playing");
+            $(this).attr("value", "pause");
+        }
+        else {
+            file.playing = false;
+            $("#status").text("Paused");
+            $(this).attr("value", "play");
+        }
+    });
+    
+    /*function generateVis(x) {
+        var canvas = $('vis').get(0).getContext('2d');;
+        var centre = context.canvas.height / 2;
+        var length = 
+        
+        context.beginPath();
+        context.lineWidth = 1;
+        
+        var oldPos = file.buffer.pos;
+        
+        
+        context.moveTo
+        
+        if (x < context.canvas.width) {
+            setTimeout(function(){ generateVis(x+1); }, 0);
+        }
+    }*/
+    
+    function readJSSoundBuffer() {
+        if (file.playing) {
+            var samples = JSON.stringify(file.readSamples(2048));
+            if (!sliding) {
+                $('#position').text(formatTime(file.positionSeconds));
+                $('#position-slider').slider('option', 'value', Math.floor(file.positionSeconds/file.lengthSeconds * 1000));
+            }
+            return samples;
+        }
+        
+    }
+</script>
+</body>
+</html>

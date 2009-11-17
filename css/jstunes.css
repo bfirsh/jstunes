@@ -1,0 +1,9 @@
+#length {
+    position: relative;
+    top: -35px;
+    left: 1000px;
+}
+
+#player {
+    display: none;
+}
