@@ -43,10 +43,14 @@ function File(buffer) {
 
 File.prototype.readSamples = function(count) {
     var data = this.buffer.read(count*4);
-    var out = new Array(count*2);
+    
+    var out_left = new Array(count);
+    var out_right = new Array(count);
+    
+    
     var left, right, dataPos;
-    for (var i=0; i<count*2; i+=2) {
-        dataPos = i*2;
+    for (var i=0; i<count; i++) {
+        dataPos = i*4;
         left = data[dataPos+1] << 8 | data[dataPos];
         if (data[dataPos+1] >> 7 == 1) {
             left -= 65536;
@@ -59,9 +63,22 @@ File.prototype.readSamples = function(count) {
         }
         right *= this.volume;
         
-        out[i] = left;
-        out[i+1] = right;
+        out_left[i] = left;
+        out_right[i] = right;
     }
+	
+	out_left = eq.process(out_left);
+	out_right = eq.process(out_right);
+	
+	var out = new Array(count*2);
+	
+	
+	var j = 0;
+	for (var i=0; i<count; i++) {
+	    out[j++] = out_left[i];
+	    out[j++] = out_right[i];
+	}
+	
     this.positionSeconds = (this.buffer.pos / this.lengthBytes) * this.lengthSeconds;
     return out
 }

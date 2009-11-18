@@ -23,6 +23,33 @@
             <p id="length">0:00</p>
         
             <input type="button" value="play" id="playpause" disabled="disabled">
+            
+            
+            <div id="controls">
+                <div id="volume">
+                    <p class="ui-state-default ui-corner-all ui-helper-clearfix" style="padding:4px; margin-right: 10px">
+                    <span class="ui-icon ui-icon-volume-on" style="float:left; margin:-2px 5px 0 0;"></span>
+                    Volume
+                    </p>
+
+                    <div style="width:90%; margin:15px;"></div>
+                </div>
+            
+                <div id="eq">
+                    <p class="ui-state-default ui-corner-all" style="padding:4px">
+                    <span class="ui-icon ui-icon-signal" style="float:left; margin:-2px 5px 0 0;"></span>
+                    EQ <input type="checkbox" id="eq-enable">
+                    </p>
+
+                	<span id="bass"></span>
+                	<span id="mid"></span>
+                	<span id="treble"></span>
+            	
+                	<div id="freq" style="width: 90%; clear: left"></div>
+                	<div id="width" style="width: 90%"></div>
+                </div>
+            </div>
+            
         </div>
 
 	<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=10,0,0,0" width="1" height="1" id="jssound" align="middle">
@@ -36,6 +63,7 @@
 <script src="js/jquery-1.3.2.min.js" type="text/javascript" charset="utf-8"></script>
 <script type="text/javascript" src="js/jquery-ui-1.7.2.custom.min.js"></script>
 <script src="js/buffer.js" type="text/javascript" charset="utf-8"></script>
+<script src="js/eq.js" type="text/javascript" charset="utf-8"></script>
 <script src="js/file.js" type="text/javascript" charset="utf-8"></script>
 <script src="js/utils.js" type="text/javascript" charset="utf-8"></script>
 <script type="text/javascript" charset="utf-8">
@@ -43,10 +71,20 @@
         $('#status').text('Loaded.');
     });
     
+    $.extend($.ui.slider.defaults, {
+		range: "min",
+		animate: true,
+        max: 1000,
+        value: 1000
+	});
+    
     var file;
+    var eq;
     var sliding = false;
     
+  	$('#player').show();
     $('#file').change(function() {
+      
         $('#status').text('Loading '+$(this).val()+' ...');
         var fileStr = $(this).get(0).files[0].getAsBinary();
         var fileArray = new Array(fileStr.length);
@@ -54,24 +92,60 @@
             fileArray[i] = fileStr.charCodeAt(i);
         }
         file = new File(new Buffer(fileArray));
+        
+        eq = new EQ(44100);
+        
         $('#status').text('Loaded.');
+        
         $("#playpause").attr("disabled", null).attr("value", "play");
+        
+        // Set up position slider
         $('#length').text(formatTime(file.lengthSeconds));
         var slider = $("#position-slider").slider({
-    		value: 0,
-    		orientation: "horizontal",
-    		animate: true,
-    		max: 1000
-    	}).bind('slidechange', function(event, ui) {
-    	    file.skipToSample(Math.floor(ui.value/1000 * file.lengthSamples));
-    	}).bind('slidestart', function(event, ui) {
-    	    sliding = true;
-    	}).bind('slidestop', function(event, ui){
-    	    sliding = false;
-    	}).bind('slide', function(event, ui){
-    	    $('#position').text(formatTime(ui.value/1000 * file.lengthSeconds));
+            value: 0,
+            orientation: "horizontal"
+        }).bind('slidechange', function(event, ui) {
+      	    file.skipToSample(Math.floor(ui.value/1000 * file.lengthSamples));
+      	}).bind('slidestart', function(event, ui) {
+      	    sliding = true;
+      	}).bind('slidestop', function(event, ui){
+      	    sliding = false;
+      	}).bind('slide', function(event, ui){
+      	    $('#position').text(formatTime(ui.value/1000 * file.lengthSeconds));
+      	});
+      	
+      	// Set up volume
+		$("#volume div").slider({
+			value: 1000,
+			orientation: "horizontal"
+		}).bind('slide', function(event, ui) {
+		    // http://www.dr-lex.be/info-stuff/volumecontrols.html
+		    file.volume = expVolume(ui.value/1000);
+		});
+		// Set up EQ
+		$("#eq #bass").slider({
+    		orientation: "vertical"
+		}).bind('slide', function(event, ui) {
+    		eq.bass = expVolume(ui.value/1000);
     	});
-    	$('#player').show();
+		$("#eq #mid").slider({
+    		orientation: "vertical"
+		}).bind('slide', function(event, ui) {
+    		eq.mid = expVolume(ui.value/1000);
+    	});
+		$("#eq #treble").slider({
+    		orientation: "vertical"
+		}).bind('slide', function(event, ui) {
+    		eq.treble = expVolume(ui.value/1000);
+    	});
+    	$("#eq #freq").slider({
+    		orientation: "horizontal",
+    		max: 5000,
+    		min: 200,
+    		value: 2000
+		}).bind('slide', function(event, ui) {
+    		eq.updateFreq(ui.value);
+    	});
     	//setTimeout(function(){ generateVis(0); }, 0);
     });
     

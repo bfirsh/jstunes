@@ -7,3 +7,12 @@
 #player {
     display: none;
 }
+
+#volume, #eq {
+    width: 50%;
+    float: left;
+}
+
+#eq > span {
+	height:120px; float:left; margin:15px
+}
