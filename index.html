@@ -126,17 +126,17 @@
 		$("#eq #bass").slider({
     		orientation: "vertical"
 		}).bind('slide', function(event, ui) {
-    		eq.bass = expVolume(ui.value/1000);
+    		eq.bass = ui.value/1000;
     	});
 		$("#eq #mid").slider({
     		orientation: "vertical"
 		}).bind('slide', function(event, ui) {
-    		eq.mid = expVolume(ui.value/1000);
+    		eq.mid = ui.value/1000;
     	});
 		$("#eq #treble").slider({
     		orientation: "vertical"
 		}).bind('slide', function(event, ui) {
-    		eq.treble = expVolume(ui.value/1000);
+    		eq.treble = ui.value/1000;
     	});
     	$("#eq #freq").slider({
     		orientation: "horizontal",
@@ -184,7 +184,7 @@
     
     function readJSSoundBuffer() {
         if (file.playing) {
-            var samples = JSON.stringify(file.readSamples(2048));
+            var samples = JSON.stringify(file.readSamples(8192));
             if (!sliding) {
                 $('#position').text(formatTime(file.positionSeconds));
                 $('#position-slider').slider('option', 'value', Math.floor(file.positionSeconds/file.lengthSeconds * 1000));

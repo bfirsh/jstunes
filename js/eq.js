@@ -83,7 +83,7 @@ function EQ(fs) {
 EQ.prototype.reset = function() {
     this.d1 = 0;
     this.d2 = 0;
-    this.q1 = 1.5;
+    this.q1 = 1.0;
     this.updateFreq(2000);
 }
 
