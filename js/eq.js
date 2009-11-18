@@ -73,6 +73,8 @@ tho'.
 function EQ(fs) {
     this.fs = fs;
     
+    this.enabled = false;
+    
     this.treble = 1.0;
     this.mid = 1.0;
     this.bass = 1.0;
@@ -92,6 +94,10 @@ EQ.prototype.updateFreq = function(freq) {
 }
 
 EQ.prototype.process = function(samples) {
+    if (!this.enabled) {
+        return samples
+    }
+    
     var d1 = this.d1;
     var d2 = this.d2;
     var f1 = this.f1;
@@ -109,7 +115,7 @@ EQ.prototype.process = function(samples) {
         d1 = b;
         d2 = l;
         
-        samples[i] = Math.floor((l*bass+b*mid+h*treble)/3);
+        samples[i] = Math.floor((l*bass+b*mid+h*treble)/2);
     }
     
     this.d1 = d1;

@@ -146,6 +146,12 @@
 		}).bind('slide', function(event, ui) {
     		eq.updateFreq(ui.value);
     	});
+    	
+    	
+        $('#eq-enable').change(function() {
+            eq.enabled = $(this).get(0).checked;
+        });
+    	
     	//setTimeout(function(){ generateVis(0); }, 0);
     });
     
