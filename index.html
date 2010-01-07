@@ -3,21 +3,23 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
-    <title>jsTunes</title>
+    <title>jsTunes: A JavaScript Audio Player</title>
     
-    <link type="text/css" href="css/jstunes.css" rel="Stylesheet">
+    <link rel="stylesheet" href="style.3.css" type="text/css" media="screen"
+charset="utf-8">
+    <link type="text/css" href="css/jstunes.1.css" rel="Stylesheet">
     <link type="text/css" href="css/smoothness/jquery-ui-1.7.2.custom.css" rel="Stylesheet">
 </head>
 
 <body><div id="wrapper">
     <h1>jsTunes</h1>
+    <p class="summary">A JavaScript <a href="http://en.wikipedia.org/wiki/WAV">WAV</a> audio player with parametric EQ for <a href="http://www.mozilla.com/firefox/all-beta.html">Firefox 3.6</a>.<br /><small>By <a href="/">Ben Firshman</a> <a href="http://twitter.com/bfirsh">@bfirsh</a></small></p>
     
         <p id="status">Loading...</p>
         <input type="file" id="file">
         
         <div id="player">
-            <!--<canvas id="vis" width="1000" height="100"></canvas>-->
-            <div id="position-slider" style="width:1000px; margin:15px;"></div>
+            <div id="position-slider"></div>
         
             <p id="position">0:00</p>
             <p id="length">0:00</p>
@@ -29,10 +31,10 @@
                 <div id="volume">
                     <p class="ui-state-default ui-corner-all ui-helper-clearfix" style="padding:4px; margin-right: 10px">
                     <span class="ui-icon ui-icon-volume-on" style="float:left; margin:-2px 5px 0 0;"></span>
-                    Volume
+                    Volume (<span class="value">100</span>%)
                     </p>
 
-                    <div style="width:90%; margin:15px;"></div>
+                    <div id="volume-slider"></div>
                 </div>
             
                 <div id="eq">
@@ -41,17 +43,23 @@
                     EQ <input type="checkbox" id="eq-enable">
                     </p>
 
-                	<span id="bass"></span>
-                	<span id="mid"></span>
-                	<span id="treble"></span>
-            	
-                	<div id="freq" style="width: 90%; clear: left"></div>
-                	<div id="width" style="width: 90%"></div>
+                	<span id="bass"><label>Bass</label></span>
+                	<span id="mid"><label>Mid</label></span>
+                	<span id="treble"><label>Treble</label></span>
+            	    
+            	    
+                	<div id="freq"><label>Mid Frequency (<span class="value">2000</span> Hz)</label></div>
+                	<div id="width"></div>
                 </div>
             </div>
             
         </div>
-
+        
+        <p>As a side effect of adding sound to <a href="/projects/jsnes/">JSNES</a>, I wrote a neat little Flash interface for playing dynamically generated sound from JavaScript, and this is a demo of what it is capable of.</p>
+        <p>Only <strong>32 bit 44.1 KHz stereo WAV files</strong> are supported at the moment.</p>
+        <p>The interface just reads a buffer from JavaScript and writes it to the sound card. All the EQ processing and file loading (thanks to <a href="http://www.mozilla.com/firefox/all-beta.html">Firefox 3.6</a>'s <a href="http://hacks.mozilla.org/2009/12/w3c-fileapi-in-firefox-3-6/">asynchronous file API</a>) is done in JavaScript.</p>
+        <p>The source is available on <a href="http://github.com/bfirsh/jstunes/">Github</a>. I hope to release the Flash interface as a reusable library soon.</p>
+        
 	<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=10,0,0,0" width="1" height="1" id="jssound" align="middle">
 	<param name="allowScriptAccess" value="sameDomain" />
 	<param name="allowFullScreen" value="false" />
@@ -68,7 +76,12 @@
 <script src="js/utils.js" type="text/javascript" charset="utf-8"></script>
 <script type="text/javascript" charset="utf-8">
     $(document).ready(function() {
-        $('#status').text('Loaded.');
+        if ($.browser.mozilla && $.browser.version.substr(0,3)=="1.9" && parseInt($.browser.version[4]) >= 2) {
+            $('#status').text('Ready. Select a file:');
+        }
+        else {
+            $('#status').text("You aren't running Firefox 3.6, this might not work!");
+        }
     });
     
     $.extend($.ui.slider.defaults, {
@@ -82,77 +95,108 @@
     var eq;
     var sliding = false;
     
-  	$('#player').show();
+    
     $('#file').change(function() {
-      
-        $('#status').text('Loading '+$(this).val()+' ...');
-        var fileStr = $(this).get(0).files[0].getAsBinary();
-        var fileArray = new Array(fileStr.length);
-        for (var i=0; i<fileStr.length; i++) {
-            fileArray[i] = fileStr.charCodeAt(i);
+        binaryReader = new FileReader();
+        var status = $('#status');
+        binaryReader.onprogress = function(evt) {
+            if (evt.lengthComputable) {
+                status.text('Loading '+$(this).val()+' ('+Math.floor(evt.loaded/evt.total*100)+'%) ...');
+            }
         }
-        file = new File(new Buffer(fileArray));
+        binaryReader.onerror = function(evt) {
+            if(evt.target.error.code == evt.target.error.NOT_FOUND_ERR) {
+                status.text("File Not Found!");
+            }
+        }
+        binaryReader.onload = function() {
+            result = binaryReader.result;
+            resultLength = result.length; // expensive!
+            var fileArray = new Array(resultLength);
+            (function processFile(start, size) {
+                status.text('Processing '+Math.floor(start/resultLength*100)+'%...');
+                for (var i=start; i<start+size && i<resultLength; i++) {
+                    fileArray[i] = result.charCodeAt(i);
+                }
+                if (start+size < resultLength) {
+                    setTimeout(function() {processFile(start+size, size)}, 0);
+                }
+                else {
+                    file = new File(new Buffer(fileArray));
+
+                    eq = new EQ(44100);
+
+                    status.text('Loaded.');
+
+                    $("#playpause").attr("disabled", null).attr("value", "play");
+
+                    // Set up position slider
+                    $('#length').text(formatTime(file.lengthSeconds));
+                    var slider = $("#position-slider").slider({
+                        value: 0,
+                        orientation: "horizontal"
+                    }).bind('slidechange', function(event, ui) {
+                  	    file.skipToSample(Math.floor(ui.value/1000 * file.lengthSamples));
+                  	}).bind('slidestart', function(event, ui) {
+                  	    sliding = true;
+                  	}).bind('slidestop', function(event, ui){
+                  	    sliding = false;
+                  	}).bind('slide', function(event, ui){
+                  	    $('#position').text(formatTime(ui.value/1000 * file.lengthSeconds));
+                  	});
+
+                  	// Set up volume
+                  	var volumeValue = $('#volume .value');
+            		$("#volume div").slider({
+            			value: 1000,
+            			orientation: "horizontal"
+            		}).bind('slide', function(event, ui) {
+            		    volumeValue.text(Math.floor(ui.value/10));
+            		    file.volume = expVolume(ui.value/1000);
+            		});
+            		// Set up EQ
+            		$("#eq #bass").slider({
+                		orientation: "vertical"
+            		}).bind('slide', function(event, ui) {
+                		eq.bass = ui.value/1000;
+                	});
+            		$("#eq #mid").slider({
+                		orientation: "vertical"
+            		}).bind('slide', function(event, ui) {
+                		eq.mid = ui.value/1000;
+                	});
+            		$("#eq #treble").slider({
+                		orientation: "vertical"
+            		}).bind('slide', function(event, ui) {
+                		eq.treble = ui.value/1000;
+                	});
+
+                	var freqValue = $('#freq .value');
+                	$("#eq #freq").slider({
+                		orientation: "horizontal",
+                		max: 5000,
+                		min: 200,
+                		value: 2000
+            		}).bind('slide', function(event, ui) {
+            		    freqValue.text(Math.floor(ui.value));
+                		eq.updateFreq(ui.value);
+                	});
+
+
+                    $('#eq-enable').change(function() {
+                        eq.enabled = $(this).get(0).checked;
+                    });
+                    
+                    $('#file').hide();
+                  	$('#player').show();
+                }
+            })(0, 1000000);
+            
+            
+        }
         
-        eq = new EQ(44100);
+        binaryReader.readAsBinaryString($(this).get(0).files[0]);
         
-        $('#status').text('Loaded.');
-        
-        $("#playpause").attr("disabled", null).attr("value", "play");
-        
-        // Set up position slider
-        $('#length').text(formatTime(file.lengthSeconds));
-        var slider = $("#position-slider").slider({
-            value: 0,
-            orientation: "horizontal"
-        }).bind('slidechange', function(event, ui) {
-      	    file.skipToSample(Math.floor(ui.value/1000 * file.lengthSamples));
-      	}).bind('slidestart', function(event, ui) {
-      	    sliding = true;
-      	}).bind('slidestop', function(event, ui){
-      	    sliding = false;
-      	}).bind('slide', function(event, ui){
-      	    $('#position').text(formatTime(ui.value/1000 * file.lengthSeconds));
-      	});
-      	
-      	// Set up volume
-		$("#volume div").slider({
-			value: 1000,
-			orientation: "horizontal"
-		}).bind('slide', function(event, ui) {
-		    // http://www.dr-lex.be/info-stuff/volumecontrols.html
-		    file.volume = expVolume(ui.value/1000);
-		});
-		// Set up EQ
-		$("#eq #bass").slider({
-    		orientation: "vertical"
-		}).bind('slide', function(event, ui) {
-    		eq.bass = ui.value/1000;
-    	});
-		$("#eq #mid").slider({
-    		orientation: "vertical"
-		}).bind('slide', function(event, ui) {
-    		eq.mid = ui.value/1000;
-    	});
-		$("#eq #treble").slider({
-    		orientation: "vertical"
-		}).bind('slide', function(event, ui) {
-    		eq.treble = ui.value/1000;
-    	});
-    	$("#eq #freq").slider({
-    		orientation: "horizontal",
-    		max: 5000,
-    		min: 200,
-    		value: 2000
-		}).bind('slide', function(event, ui) {
-    		eq.updateFreq(ui.value);
-    	});
-    	
-    	
-        $('#eq-enable').change(function() {
-            eq.enabled = $(this).get(0).checked;
-        });
-    	
-    	//setTimeout(function(){ generateVis(0); }, 0);
     });
     
     
@@ -170,23 +214,6 @@
         }
     });
     
-    /*function generateVis(x) {
-        var canvas = $('vis').get(0).getContext('2d');;
-        var centre = context.canvas.height / 2;
-        var length = 
-        
-        context.beginPath();
-        context.lineWidth = 1;
-        
-        var oldPos = file.buffer.pos;
-        
-        
-        context.moveTo
-        
-        if (x < context.canvas.width) {
-            setTimeout(function(){ generateVis(x+1); }, 0);
-        }
-    }*/
     
     function readJSSoundBuffer() {
         if (file.playing) {
@@ -199,6 +226,15 @@
         }
         
     }
-</script>
+    
+        var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+        document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+        </script>
+        <script type="text/javascript">
+        try {
+        var pageTracker = _gat._getTracker("UA-6774621-1");
+        pageTracker._trackPageview();
+        } catch(err) {}
+    </script>
 </body>
 </html>

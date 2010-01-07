@@ -115,7 +115,7 @@ EQ.prototype.process = function(samples) {
         d1 = b;
         d2 = l;
         
-        samples[i] = Math.floor((l*bass+b*mid+h*treble)/2);
+        samples[i] = Math.floor(l*bass+b*mid+h*treble);
     }
     
     this.d1 = d1;

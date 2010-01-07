@@ -55,13 +55,13 @@ File.prototype.readSamples = function(count) {
         if (data[dataPos+1] >> 7 == 1) {
             left -= 65536;
         }
-        left *= this.volume;
+        left = Math.floor(left * this.volume);
         
         right = data[dataPos+3] << 8 | data[dataPos+2];
         if (data[dataPos+3] >> 7 == 1) {
             right -= 65536;
         }
-        right *= this.volume;
+        right = Math.floor(right * this.volume);
         
         out_left[i] = left;
         out_right[i] = right;

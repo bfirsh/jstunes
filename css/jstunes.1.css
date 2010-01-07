@@ -1,0 +1,71 @@
+
+
+#status {
+    font-size: 0.8em;
+    color: #999;
+}
+
+#file {
+    margin-bottom: 2em;
+}
+
+#playpause {
+    position: relative;
+    top: -1.5em;
+}
+
+#length {
+    position: relative;
+    margin-bottom: -1.5em;
+    top: -3.5em;
+    left: 480px;
+}
+
+#player {
+    display: none;
+    margin-bottom: 2em;
+}
+
+#position-slider {
+    width: 480px;
+    margin: 15px;
+}
+
+#volume, #eq {
+    width: 33ex;
+    float: left;
+}
+
+#volume-slider, #freq {
+    width: 200px;
+    margin: 15px;
+}
+
+#eq > span {
+	height:120px;
+	float:left;
+	margin:15px;
+	margin-bottom: 40px;
+}
+
+#eq > span label, #eq > div label {
+    font-size: 0.7em;
+    position: relative;
+
+}
+
+#eq > span label {
+    top: 120px;
+    left: -4px;
+}
+
+#eq #freq {
+    clear: left;
+    position: relative;
+    top: 10px;
+}
+
+#eq #freq label {
+    top: -25px;
+}
+
