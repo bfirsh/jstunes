@@ -5,7 +5,7 @@
 
     <title>jsTunes: A JavaScript Audio Player</title>
     
-    <link rel="stylesheet" href="../../style.3.css" type="text/css" media="screen"
+    <link rel="stylesheet" href="http://benfirshman.com/style.3.css" type="text/css" media="screen"
 charset="utf-8">
     <link type="text/css" href="css/jstunes.1.css" rel="Stylesheet">
     <link type="text/css" href="css/smoothness/jquery-ui-1.7.2.custom.css" rel="Stylesheet">
@@ -16,44 +16,8 @@ charset="utf-8">
     <p class="summary">A JavaScript <a href="http://en.wikipedia.org/wiki/WAV">WAV</a> audio player with parametric EQ for <a href="http://www.mozilla.com/firefox/all-beta.html">Firefox 3.6</a>.<br /><small>By <a href="/">Ben Firshman</a> <a href="http://twitter.com/bfirsh">@bfirsh</a></small></p>
     
         <p id="status">Loading...</p>
-        <input type="file" id="file">
         
-        <div id="player">
-            <div id="position-slider"></div>
-        
-            <p id="position">0:00</p>
-            <p id="length">0:00</p>
-        
-            <input type="button" value="play" id="playpause" disabled="disabled">
-            
-            
-            <div id="controls">
-                <div id="volume">
-                    <p class="ui-state-default ui-corner-all ui-helper-clearfix" style="padding:4px; margin-right: 10px">
-                    <span class="ui-icon ui-icon-volume-on" style="float:left; margin:-2px 5px 0 0;"></span>
-                    Volume (<span class="value">100</span>%)
-                    </p>
-
-                    <div id="volume-slider"></div>
-                </div>
-            
-                <div id="eq">
-                    <p class="ui-state-default ui-corner-all" style="padding:4px">
-                    <span class="ui-icon ui-icon-signal" style="float:left; margin:-2px 5px 0 0;"></span>
-                    EQ <input type="checkbox" id="eq-enable">
-                    </p>
-
-                    <span id="bass"><label>Bass</label></span>
-                    <span id="mid"><label>Mid</label></span>
-                    <span id="treble"><label>Treble</label></span>
-                    
-                    
-                    <div id="freq"><label>Mid Frequency (<span class="value">2000</span> Hz)</label></div>
-                    <div id="width"></div>
-                </div>
-            </div>
-            
-        </div>
+        <div id="jstunes"></div>
         
         <p>As a side effect of adding sound to <a href="/projects/jsnes/">JSNES</a>, I wrote a neat little Flash interface for playing dynamically generated sound from JavaScript. I hacked together this quick demo to demonstrate what it is capable of.</p>
         <p>Only <strong>16 bit 44.1 KHz stereo WAV files</strong> are supported at the moment.</p>
@@ -72,135 +36,19 @@ charset="utf-8">
 <script type="text/javascript" src="js/jquery-ui-1.7.2.custom.min.js"></script>
 <script src="js/eq.js" type="text/javascript" charset="utf-8"></script>
 <script src="js/file.js" type="text/javascript" charset="utf-8"></script>
+<script src="js/jstunes.js" type="text/javascript" charset="utf-8"></script>
 <script src="js/stringbuffer.js" type="text/javascript" charset="utf-8"></script>
-<script src="js/utils.js" type="text/javascript" charset="utf-8"></script>
 <script type="text/javascript" charset="utf-8">
-    $(document).ready(function() {
-        if ($.browser.mozilla && $.browser.version.substr(0,3)=="1.9" && parseInt($.browser.version[4]) >= 2) {
-            $('#status').text('Ready. Select a file:');
-        }
-        else {
-            $('#status').text("You aren't running Firefox 3.6, this might not work!");
-        }
-    });
-    
-    $.extend($.ui.slider.defaults, {
-        range: "min",
-        animate: true,
-        max: 1000,
-        value: 1000
-    });
-    
-    var file;
-    var eq;
-    var sliding = false;
-    
-    
-    $('#file').change(function() {
-        binaryReader = new FileReader();
-        var status = $('#status');
-        binaryReader.onprogress = function(evt) {
-            if (evt.lengthComputable) {
-                status.text('Loading '+$(this).val()+' ('+Math.floor(evt.loaded/evt.total*100)+'%) ...');
-            }
-        }
-        binaryReader.onerror = function(evt) {
-            if(evt.target.error.code == evt.target.error.NOT_FOUND_ERR) {
-                status.text("File Not Found!");
-            }
-        }
-        binaryReader.onload = function() {
-            file = new File(new StringBuffer(binaryReader.result));
-
-            eq = new EQ(44100);
-
-            status.text('Loaded.');
-
-            $("#playpause").attr("disabled", null).attr("value", "play");
-
-            // Set up position slider
-            $('#length').text(formatTime(file.lengthSeconds));
-            var slider = $("#position-slider").slider({
-                value: 0,
-                orientation: "horizontal"
-            }).bind('slidechange', function(event, ui) {
-                file.skipToSample(Math.floor(ui.value/1000 * file.lengthSamples));
-            }).bind('slidestart', function(event, ui) {
-                sliding = true;
-            }).bind('slidestop', function(event, ui){
-                sliding = false;
-            }).bind('slide', function(event, ui){
-                $('#position').text(formatTime(ui.value/1000 * file.lengthSeconds));
-            });
-
-            // Set up volume
-            var volumeValue = $('#volume .value');
-            $("#volume div").slider({
-                value: 1000,
-                orientation: "horizontal"
-            }).bind('slide', function(event, ui) {
-                volumeValue.text(Math.floor(ui.value/10));
-                file.volume = expVolume(ui.value/1000);
-            });
-            // Set up EQ
-            $("#eq #bass").slider({
-                orientation: "vertical"
-            }).bind('slide', function(event, ui) {
-                eq.bass = ui.value/1000;
-            });
-            $("#eq #mid").slider({
-                orientation: "vertical"
-            }).bind('slide', function(event, ui) {
-                eq.mid = ui.value/1000;
-            });
-            $("#eq #treble").slider({
-                orientation: "vertical"
-            }).bind('slide', function(event, ui) {
-                eq.treble = ui.value/1000;
-            });
-
-            var freqValue = $('#freq .value');
-            $("#eq #freq").slider({
-                orientation: "horizontal",
-                max: 5000,
-                min: 200,
-                value: 2000
-            }).bind('slide', function(event, ui) {
-                freqValue.text(Math.floor(ui.value));
-                eq.updateFreq(ui.value);
-            });
-
-
-            $('#eq-enable').change(function() {
-                eq.enabled = $(this).get(0).checked;
-            });
-        
-            $('#file').hide();
-            $('#player').show();
-        }
-        
-        binaryReader.readAsBinaryString($(this).get(0).files[0]);
-    });
-    
-    $("#playpause").click(function() {
-        if ($(this).attr("value") == "play") {
-            file.playing = true;
-            $("#status").text("Playing");
-            $(this).attr("value", "pause");
-        }
-        else {
-            file.playing = false;
-            $("#status").text("Paused");
-            $(this).attr("value", "play");
-        }
-    });
+    var jstunes = new JSTunes($('#jstunes'));
     
     function readJSSoundBuffer() {
-        if (file.playing) {
-            var samples = JSON.stringify(file.readSamples(8192));
-            if (!sliding) {
-                $('#position').text(formatTime(file.positionSeconds));
-                $('#position-slider').slider('option', 'value', Math.floor(file.positionSeconds/file.lengthSeconds * 1000));
+        if (jstunes.playing) {
+            var samples = JSON.stringify(jstunes.readSamples(8192));
+            if (!jstunes.positionSliding) {
+                $('#position').text(
+                    jstunes.formatTime(jstunes.file.positionSeconds)
+                );
+                $('#position-slider').slider('option', 'value', Math.floor(jstunes.file.positionSeconds/jstunes.file.lengthSeconds * 1000));
             }
             return samples;
         }

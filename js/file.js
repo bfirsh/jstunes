@@ -1,8 +1,9 @@
-// https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
 
-function File(buffer) {
+
+function WavFile(buffer) {
+    // https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
+    
     this.buffer = buffer;
-    this.playing = false;
     this.positionSeconds = 0;
     this.volume = 1.0;
     
@@ -41,12 +42,15 @@ function File(buffer) {
     this.lengthSeconds = this.lengthSamples / 44100;
 }
 
-File.prototype.readSamples = function(count) {
+WavFile.prototype.readSamples = function(count) {
+    /*
+     * Returns two arrays of left and right samples as signed 16 bit integers
+     */
+    
     var data = this.buffer.read(count*4);
     
     var out_left = new Array(count);
     var out_right = new Array(count);
-    
     
     var left, right, dataPos;
     for (var i=0; i<count; i++) {
@@ -67,23 +71,12 @@ File.prototype.readSamples = function(count) {
         out_right[i] = right;
     }
 	
-	out_left = eq.process(out_left);
-	out_right = eq.process(out_right);
-	
-	var out = new Array(count*2);
-	
-	
-	var j = 0;
-	for (var i=0; i<count; i++) {
-	    out[j++] = out_left[i];
-	    out[j++] = out_right[i];
-	}
-	
     this.positionSeconds = (this.buffer.pos / this.lengthBytes) * this.lengthSeconds;
-    return out
+    
+    return [out_left, out_right];
 }
 
-File.prototype.skipToSample = function(sample) {
+WavFile.prototype.skipToSample = function(sample) {
     this.buffer.pos = 44 + sample * 4;
 }
 
